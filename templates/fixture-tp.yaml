@@ -1,0 +1,15 @@
+id: fixture-tp
+info:
+  name: CPG-Nuclei harness fixture true-positive
+  author: cpg-nuclei
+  severity: info
+  tags: cpg-nuclei,fixture,test
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/tp-marker"
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "CPG_NUCLEI_FIXTURE_TP_MATCH"

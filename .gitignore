@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+.cursor/mcp.json
+logs/
+targets/
+target/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+harness/reports/

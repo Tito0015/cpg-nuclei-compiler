@@ -1,0 +1,27 @@
+[package]
+name = "cpg_nuclei_core"
+version = "0.1.0"
+edition = "2021"
+description = "Joern CPG bridge and Nuclei YAML exporter for Solidity and C-family sources"
+
+[dependencies]
+solang-parser = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+hex = "0.4"
+tempfile = "3"
+regex = "1"
+
+[dev-dependencies]
+hex = "0.4"
+clap = { version = "4", features = ["derive"] }
+
+[[bin]]
+name = "cpg_nuclei_cli"
+path = "src/bin/cli.rs"
+
+[[example]]
+name = "run_cpg_pipeline"
+path = "examples/run_cpg_pipeline.rs"
