@@ -18,6 +18,11 @@ Source (C/C++, Java, Go, Python, …) → Joern CPG → DataFlowSlice → Nuclei
 | Docker closed-loop runner | `harness/docker_runner.py` |
 | Architecture docs | `docs/cpg/`, `docs/nuclei/` |
 
+### Agentic & AI Workflow Integration
+
+`cpg-nuclei-compiler` serves as a high-integrity execution primitive for AI coding agents and autonomous security frameworks (e.g., OpenCode, Kilo Code, Cursor, Claude Code).
+
+Rather than relying on probabilistic LLM context windows to guess template schemas or manually trace dataflows, agents invoke this CLI to achieve deterministic graph traversals (AST + CFG + PDG) with 0% syntax-error output guarantees.
 ## Quick start
 
 ### Prerequisites
