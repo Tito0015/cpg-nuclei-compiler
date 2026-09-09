@@ -5,6 +5,10 @@ Open-source **Code Property Graph (CPG) compiler** and **ProjectDiscovery Nuclei
 ```
 Source (C/C++, Java, Go, Python, …) → Joern CPG → DataFlowSlice → Nuclei YAML → nuclei (Docker) → TP/TN report
 ```
+## Research & Benchmarks
+
+* **Empirical Analysis (CVE-2025-62593):** [CPG Compilation vs. LLM AI Generation: Empirical Analysis of CVE-2025-62593 Rule Accuracy](https://medium.com/@mhiritarek/cpg-compilation-vs-llm-ai-generation-empirical-analysis-of-cve-2025-62593-rule-accuracy-6ea0b27583da) — Benchmarking deterministic CPG static compilation against LLM-based template synthesis on asynchronous execution logic.
+* **Architectural Overview:** [Why I Built an Open-Source CPG-to-Nuclei Compiler in Rust](https://medium.com/@mhiritarek/why-i-built-an-open-source-cpg-to-nuclei-compiler-in-rust-a1b2c3d4e5f6) — Detailed walkthrough of bridging Joern code graphs to ProjectDiscovery Nuclei DSL syntax.
 
 ## What's included
 
