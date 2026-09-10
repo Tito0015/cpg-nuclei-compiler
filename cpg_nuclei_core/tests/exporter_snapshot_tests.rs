@@ -141,6 +141,61 @@ fn nuclei_exporter_with_spec_id_includes_spec_tag_and_metadata() {
 }
 
 #[test]
+fn nuclei_exporter_cve_2025_62593_ray_template() {
+    let slice = DataFlowSlice {
+        nodes: vec![
+            SliceNode {
+                id: 0,
+                label: "METHOD_PARAMETER_IN".into(),
+                name: "entrypoint".into(),
+                code: "entrypoint".into(),
+                type_full_name: "".into(),
+                parent_method: "submit_job".into(),
+                parent_file: "ray_dashboard.py".into(),
+                line_number: None,
+                column_number: None,
+            },
+            SliceNode {
+                id: 1,
+                label: "CALL".into(),
+                name: "POST".into(),
+                code: "POST /api/jobs/ entrypoint=id".into(),
+                type_full_name: "".into(),
+                parent_method: "submit_job".into(),
+                parent_file: "ray_dashboard.py".into(),
+                line_number: None,
+                column_number: None,
+            },
+        ],
+        edges: vec![SliceEdge {
+            src: 0,
+            dst: 1,
+            label: "REACHING_DEF".into(),
+        }],
+    };
+    let sat = fixture_sat_path(true);
+    let ctx = ExportContext {
+        sat: &sat,
+        slice: &slice,
+        defect_class: "ray-job-submission-rce",
+        spec_id: Some("CVE-2025-62593"),
+    };
+    let out = NucleiExporter.render(&ctx);
+
+    assert!(out.contains("id: CVE-2025-62593"), "must use CVE id");
+    assert_eq!(
+        out.matches("User-Agent: Nuclei-Scanner").count(),
+        2,
+        "POST and GET must both use non-Mozilla UA"
+    );
+    assert!(out.contains("wait_for(3)"), "logs fetch must wait for async job output");
+    assert!(out.contains("max-request: 2"), "max-request must match http blocks");
+    assert!(!out.contains("# digest:"), "unsigned custom template");
+    assert!(out.contains("POST /api/jobs/"), "must target Ray jobs API");
+    assert!(out.contains("CPG-Nuclei Engine"));
+}
+
+#[test]
 fn dispatch_nuclei_matches_direct_exporter() {
     let slice = fixture_dataflow_slice();
     let sat = fixture_sat_path(true);

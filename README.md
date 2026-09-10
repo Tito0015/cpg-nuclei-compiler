@@ -5,6 +5,21 @@ Open-source **Code Property Graph (CPG) compiler** and **ProjectDiscovery Nuclei
 ```
 Source (C/C++, Java, Go, Python, …) → Joern CPG → DataFlowSlice → Nuclei YAML → nuclei (Docker) → TP/TN report
 ```
+
+## Capabilities & Limitations
+
+This repository provides a high-integrity execution primitive for security researchers and AI agents. It operates deterministically rather than probabilistically.
+
+**What this tool DOES (and excels at):**
+* **Deterministic Translation:** Translates Joern Code Property Graphs (AST + CFG + PDG) directly into syntax-error-free Nuclei YAML.
+* **Template Refactoring:** Acts as an engineering backend to convert flaky, destructive, or noisy community PoCs into schema-compliant, production-ready rules.
+* **Closed-Loop Verification:** Provides a local `harness/docker_runner.py` to spin up targets, execute compiled templates, and guarantee True Positives (TP) locally before submitting Pull Requests.
+* **Handling Async Logic:** Automatically enforces HTTP header hardening (e.g., `User-Agent`) and asynchronous execution delays (`wait_for`) based on code graph analysis.
+
+**What this tool DOES NOT do:**
+* **Text-to-Template Generation:** This tool cannot generate templates from natural language, CVE advisories, or bug bounty write-ups. It requires actual target source code (C/C++, Java, Go, Python) or a pre-compiled Joern CPG to trace data flows.
+* **Autonomous Target Acquisition:** The provided Docker harness requires you to manually define the target container and supply the source code; it does not automatically hunt for vulnerable images.
+
 ## Research & Benchmarks
 
 * **Empirical Analysis (CVE-2025-62593):** [CPG Compilation vs. LLM AI Generation: Empirical Analysis of CVE-2025-62593 Rule Accuracy](https://medium.com/@mhiritarek/cpg-compilation-vs-llm-ai-generation-empirical-analysis-of-cve-2025-62593-rule-accuracy-6ea0b27583da) — Benchmarking deterministic CPG static compilation against LLM-based template synthesis on asynchronous execution logic.
