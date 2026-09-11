@@ -20,6 +20,29 @@ This repository provides a high-integrity execution primitive for security resea
 * **Text-to-Template Generation:** This tool cannot generate templates from natural language, CVE advisories, or bug bounty write-ups. It requires actual target source code (C/C++, Java, Go, Python) or a pre-compiled Joern CPG to trace data flows.
 * **Autonomous Target Acquisition:** The provided Docker harness requires you to manually define the target container and supply the source code; it does not automatically hunt for vulnerable images.
 
+## 🛠️ Primary Use Case: Refactoring Destructive Templates
+
+While generating *new* templates from scratch requires target source code for Joern CPG analysis, **refactoring existing templates requires zero CPG setup**.
+
+This repository serves as a deterministic unit-testing harness to take flaky, state-mutating, or destructive community templates and safely convert them into non-destructive, production-ready rules.
+
+**Why Use This Tool for Refactoring?**
+* **Zero CPG Overhead:** You do not need source code or Joern static analysis to refactor an existing `.yaml` template.
+* **Deterministic Verification:** Use `harness/docker_runner.py` to test rules against local Docker targets, ensuring 0% syntax errors and verifying True Positives (TP) before opening upstream PRs.
+* **Automated Hardening:** Enforce strict `User-Agent: Nuclei-Scanner` headers, state snapshotting, and `wait_for` timing primitives.
+
+**3-Step Refactoring Workflow**
+1. **Fetch Target Template:** Pick a community template from `projectdiscovery/nuclei-templates` that lacks proper cleanup or mutates application state.
+2. **Execute Local Harness:** Spin up the target container and run the verification harness locally:
+   ```bash
+   python -m harness.docker_runner --template templates/CVE-2024-51483.yaml --target http://127.0.0.1:5000
+   ```
+3. **Submit Upstream:** Verify non-destructive execution and submit a verified Pull Request to ProjectDiscovery.
+
+**Case Study Reference**
+
+* **[PR #17007 (CVE-2024-51483)](https://github.com/projectdiscovery/nuclei-templates/pull/17007):** Refactored a destructive `changedetection.io` rule to capture setting snapshots via GET, perform a non-destructive check, and restore settings automatically post-scan.
+
 ## Research & Benchmarks
 
 * **Empirical Analysis (CVE-2025-62593):** [CPG Compilation vs. LLM AI Generation: Empirical Analysis of CVE-2025-62593 Rule Accuracy](https://medium.com/@mhiritarek/cpg-compilation-vs-llm-ai-generation-empirical-analysis-of-cve-2025-62593-rule-accuracy-6ea0b27583da) — Benchmarking deterministic CPG static compilation against LLM-based template synthesis on asynchronous execution logic.
