@@ -55,7 +55,9 @@ def test_nuclei_yaml_structure_from_rust_render() -> None:
 def test_docker_runner_argparse() -> None:
     from harness.docker_runner import _parse_nuclei_output, main
 
-    matched, hits = _parse_nuclei_output("[fixture-tp] http://127.0.0.1:5000/tp-marker", "")
+    matched, hits, _extracted = _parse_nuclei_output(
+        "[fixture-tp] http://127.0.0.1:5000/tp-marker", ""
+    )
     assert matched
     assert hits
 
@@ -97,6 +99,89 @@ def test_docker_runner_cve_template_tn_on_fixture() -> None:
             "harness.docker_runner",
             "--template",
             "templates/CVE-2024-51483.yaml",
+            "--target",
+            "http://127.0.0.1:5000",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=360,
+        check=False,
+    )
+    if "Cannot connect to the Docker daemon" in proc.stderr:
+        pytest.skip("Docker daemon not running")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert '"verdict": "TN"' in proc.stdout
+
+
+@pytest.mark.skipif(not shutil.which("docker"), reason="docker not on PATH")
+def test_mcp_tools_list_docker_tp() -> None:
+    template = ROOT / "templates" / "mcp-server-unauth-tools-list.yaml"
+    render = subprocess.run(
+        [
+            "cargo",
+            "run",
+            "-p",
+            "cpg_nuclei_core",
+            "--bin",
+            "cpg_nuclei_cli",
+            "--",
+            "--render-spec",
+            "MCP-TOOLS-LIST",
+            str(template),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    assert render.returncode == 0, render.stdout + render.stderr
+    assert template.is_file()
+
+    proc = subprocess.run(
+        [sys.executable, "-m", "harness.docker_runner", "--mcp"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=360,
+        check=False,
+    )
+    if "Cannot connect to the Docker daemon" in proc.stderr:
+        pytest.skip("Docker daemon not running")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert '"verdict": "TP"' in proc.stdout
+    assert "read_file" in proc.stdout or '"extracted"' in proc.stdout
+
+
+@pytest.mark.skipif(not shutil.which("docker"), reason="docker not on PATH")
+def test_mcp_tools_list_template_tn_on_fixture() -> None:
+    template = ROOT / "templates" / "mcp-server-unauth-tools-list.yaml"
+    if not template.is_file():
+        subprocess.run(
+            [
+                "cargo",
+                "run",
+                "-p",
+                "cpg_nuclei_core",
+                "--bin",
+                "cpg_nuclei_cli",
+                "--",
+                "--render-spec",
+                "MCP-TOOLS-LIST",
+                str(template),
+            ],
+            cwd=ROOT,
+            check=True,
+            timeout=300,
+        )
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "harness.docker_runner",
+            "--template",
+            str(template),
             "--target",
             "http://127.0.0.1:5000",
         ],

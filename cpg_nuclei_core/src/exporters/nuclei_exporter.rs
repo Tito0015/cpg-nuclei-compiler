@@ -181,10 +181,131 @@ http:
     )
 }
 
+const MCP_TOOLS_LIST_PATHS: &[&str] = &["/mcp", "/messages", "/sse", "/"];
+
+const MCP_TOOLS_LIST_RPC_BODY: &str =
+    r#"{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}"#;
+
+/// Nuclei template for unauthenticated MCP `tools/list` exposure (nuclei-templates #16735).
+fn render_mcp_tools_list_exposure(ctx: &ExportContext) -> String {
+    let verdict_str = if ctx.sat.sat { "SAT" } else { "UNSAT" };
+    let target_fn = target_function(&ctx.slice.nodes);
+
+    let http_blocks = MCP_TOOLS_LIST_PATHS
+        .iter()
+        .map(|path| render_mcp_tools_list_http_block(path))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    format!(
+        r#"id: mcp-server-unauth-tools-list
+
+info:
+  name: MCP Server - Unauthenticated tools/list Exposure
+  author:
+    - CPG-Nuclei Engine
+  severity: high
+  description: |
+    Model Context Protocol (MCP) HTTP transport exposes the JSON-RPC 2.0 tools/list method without authentication, allowing anyone to enumerate tool capabilities (often including file I/O or shell-adjacent primitives).
+  impact: |
+    Unauthenticated tool enumeration enables targeted prompt-injection and follow-on abuse of exposed MCP tools.
+  remediation: |
+    Require authentication on every MCP HTTP endpoint (Bearer token, API key, or mTLS). Do not expose MCP dashboards on untrusted networks.
+  reference:
+    - https://github.com/projectdiscovery/nuclei-templates/issues/16735
+    - https://mcpsafe.io/threats/MCP-217
+    - https://modelcontextprotocol.io/specification/draft/basic/security_best_practices
+  classification:
+    cwe-id: CWE-306
+    cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N
+    cvss-score: 7.5
+  metadata:
+    verified: true
+    max-request: {max_request}
+    spec_id: "MCP-TOOLS-LIST"
+    cpg_verified: {verdict_str}
+    invariant_count: {invariant_count}
+    target_function: "{target_fn}"
+    chain_name: "{chain_name}"
+  tags: mcp,misconfig,unauth,exposure,jsonrpc
+
+http:
+{http_blocks}
+"#,
+        max_request = MCP_TOOLS_LIST_PATHS.len(),
+        verdict_str = verdict_str,
+        invariant_count = ctx.sat.invariant_count,
+        target_fn = target_fn,
+        chain_name = ctx.sat.chain_name,
+        http_blocks = http_blocks,
+    )
+}
+
+fn render_mcp_tools_list_http_block(path: &str) -> String {
+    format!(
+        r#"  - raw:
+      - |
+        POST {path} HTTP/1.1
+        Host: {{{{Hostname}}}}
+        MCP-Protocol-Version: 2026-07-28
+        Accept: application/json, text/event-stream
+        Content-Type: application/json
+        User-Agent: Nuclei-Scanner
+
+        {rpc_body}
+    extractors:
+      - type: regex
+        name: mcp_tool_names
+        part: body
+        group: 1
+        regex:
+          - '"name"\s*:\s*"([^"]+)"'
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        part: body
+        words:
+          - '"jsonrpc"'
+          - '"2.0"'
+        condition: and
+      - type: word
+        part: body
+        words:
+          - '"result"'
+      - type: word
+        part: body
+        words:
+          - '"tools"'
+          - '"inputSchema"'
+        condition: or
+      - type: word
+        part: body
+        words:
+          - '"error"'
+          - 'code":-32'
+          - 'Unauthorized'
+          - '401'
+        negative: true
+      - type: regex
+        part: body
+        regex:
+          - '"name"\s*:\s*"[^"]+"'
+"#,
+        path = path,
+        rpc_body = MCP_TOOLS_LIST_RPC_BODY,
+    )
+}
+
 impl ExportAdapter for NucleiExporter {
     fn render(&self, ctx: &ExportContext) -> String {
         if ctx.spec_id == Some("CVE-2025-62593") {
             return render_cve_2025_62593(ctx);
+        }
+        if ctx.spec_id == Some("MCP-TOOLS-LIST") {
+            return render_mcp_tools_list_exposure(ctx);
         }
 
         let verdict_str = if ctx.sat.sat { "SAT" } else { "UNSAT" };

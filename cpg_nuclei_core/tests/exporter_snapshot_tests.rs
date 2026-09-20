@@ -196,6 +196,44 @@ fn nuclei_exporter_cve_2025_62593_ray_template() {
 }
 
 #[test]
+fn nuclei_exporter_mcp_tools_list_template() {
+    let slice = DataFlowSlice {
+        nodes: vec![SliceNode {
+            id: 1,
+            label: "CALL".into(),
+            name: "POST".into(),
+            code: "POST /mcp tools/list".into(),
+            type_full_name: String::new(),
+            parent_method: "tools_list".into(),
+            parent_file: "mcp_server.ts".into(),
+            line_number: None,
+            column_number: None,
+        }],
+        edges: vec![],
+    };
+    let sat = fixture_sat_path(true);
+    let ctx = ExportContext {
+        sat: &sat,
+        slice: &slice,
+        defect_class: "mcp-unauthenticated-tools-list",
+        spec_id: Some("MCP-TOOLS-LIST"),
+    };
+    let out = NucleiExporter.render(&ctx);
+
+    assert!(out.contains("id: mcp-server-unauth-tools-list"));
+    assert!(out.contains("severity: high"));
+    assert!(out.contains(r#""jsonrpc":"2.0""#));
+    assert!(out.contains("tools/list"));
+    assert!(out.contains("MCP-Protocol-Version: 2026-07-28"));
+    assert!(out.contains("mcp_tool_names"));
+    assert!(out.contains("negative: true"));
+    assert!(out.contains("POST /mcp"));
+    assert!(out.contains("POST /messages"));
+    assert!(!out.contains("# digest:"));
+    assert!(out.contains("CPG-Nuclei Engine"));
+}
+
+#[test]
 fn dispatch_nuclei_matches_direct_exporter() {
     let slice = fixture_dataflow_slice();
     let sat = fixture_sat_path(true);

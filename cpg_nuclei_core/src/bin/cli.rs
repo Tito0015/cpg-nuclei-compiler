@@ -1,5 +1,6 @@
 //! IPC shell — JSON scan + Nuclei YAML export.
 
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::{self, Write};
@@ -12,7 +13,7 @@ use cpg_nuclei_core::{
     cross_tx_dfg::build_cross_tx_dfg_from_source,
     cpg_schema::{DataFlowSlice, SliceEdge, SliceNode},
     exporters::{ExportAdapter, ExportContext, NucleiExporter},
-    joern_cpg_bridge::invoke_z3_solver,
+    joern_cpg_bridge::{invoke_z3_solver, SatPath},
     parser::{parse_contract_functions, ParsedFunction},
     should_analyze_solidity_path,
     SinkType,
@@ -198,10 +199,59 @@ fn print_json<T: Serialize>(value: &T) {
     }
 }
 
+fn render_spec_template(spec_id: &str, output_path: &Path) -> Result<(), String> {
+    let (defect_class, chain_name, slice) = match spec_id {
+        "MCP-TOOLS-LIST" => (
+            "mcp-unauthenticated-tools-list",
+            "mcp-tools-list",
+            DataFlowSlice {
+                nodes: vec![SliceNode {
+                    id: 1,
+                    label: "CALL".into(),
+                    name: "POST".into(),
+                    code: "POST /mcp tools/list".into(),
+                    type_full_name: String::new(),
+                    parent_method: "tools_list".into(),
+                    parent_file: String::new(),
+                    line_number: None,
+                    column_number: None,
+                }],
+                edges: vec![],
+            },
+        ),
+        other => return Err(format!("unknown spec_id '{other}'")),
+    };
+
+    let sat = SatPath {
+        sat: true,
+        model: HashMap::new(),
+        reason: "mcp tools/list exposure template".into(),
+        invariant_count: 0,
+        chain_name: chain_name.into(),
+    };
+
+    let ctx = ExportContext {
+        sat: &sat,
+        slice: &slice,
+        defect_class,
+        spec_id: Some(spec_id),
+    };
+
+    let yaml = NucleiExporter.render(&ctx);
+    if let Some(parent) = output_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|e| format!("create output dir: {e}"))?;
+        }
+    }
+    fs::write(output_path, yaml).map_err(|e| format!("write {}: {e}", output_path.display()))?;
+    Ok(())
+}
+
 fn usage() -> ! {
     eprint_err(
         "usage: cpg_nuclei_cli --scan <dir> --severity-threshold <f>\n\
-               cpg_nuclei_cli --source <path> --export-nuclei",
+               cpg_nuclei_cli --source <path> --export-nuclei\n\
+               cpg_nuclei_cli --render-spec <SPEC_ID> <output.yaml>",
     );
 }
 
@@ -211,9 +261,21 @@ fn main() {
     let mut severity_threshold: Option<f32> = None;
     let mut source_path: Option<PathBuf> = None;
     let mut export_nuclei = false;
+    let mut render_spec: Option<String> = None;
+    let mut render_spec_out: Option<PathBuf> = None;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            "--render-spec" => {
+                let spec = args.next().unwrap_or_else(|| {
+                    eprint_err("error: --render-spec requires SPEC_ID");
+                });
+                let out = args.next().unwrap_or_else(|| {
+                    eprint_err("error: --render-spec requires output path");
+                });
+                render_spec = Some(spec);
+                render_spec_out = Some(PathBuf::from(out));
+            }
             "--scan" => {
                 let value = args.next().unwrap_or_else(|| {
                     eprint_err("error: --scan requires a path");
@@ -259,6 +321,17 @@ fn main() {
                 print!("{yaml}");
                 let _ = io::stdout().flush();
             }
+            Err(msg) => eprint_err(&format!("error: {msg}")),
+        }
+        return;
+    }
+
+    if let Some(spec_id) = render_spec {
+        let out = render_spec_out.unwrap_or_else(|| {
+            eprint_err("error: --render-spec requires output path");
+        });
+        match render_spec_template(&spec_id, &out) {
+            Ok(()) => {}
             Err(msg) => eprint_err(&format!("error: {msg}")),
         }
         return;
